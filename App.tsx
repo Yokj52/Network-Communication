@@ -1,86 +1,103 @@
-import React from 'react';
-import { Network, Server, Wifi, Globe, Shield, Database } from 'lucide-react';
-
-interface ConceptCardProps {
-  icon: React.ReactNode;
-  title: string;
-  description: string;
-}
-
-const ConceptCard: React.FC<ConceptCardProps> = ({ icon, title, description }) => (
-  <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
-    <div className="flex items-center mb-4">
-      <div className="p-2 bg-blue-100 rounded-full mr-4">
-        {icon}
-      </div>
-      <h3 className="text-xl font-semibold text-gray-800">{title}</h3>
-    </div>
-    <p className="text-gray-600">{description}</p>
-  </div>
-);
+import React, { useState } from 'react';
+import { topics } from './data';
+import { Topic, SearchResult } from './types';
+import { TopicCard } from './components/TopicCard';
+import { TopicModal } from './components/TopicModal';
+import { SearchBar } from './components/SearchBar';
+import { GraduationCap } from 'lucide-react';
 
 function App() {
-  const concepts = [
-    {
-      icon: <Network className="w-6 h-6 text-blue-600" />,
-      title: "Network Basics",
-      description: "Learn about fundamental networking concepts, protocols, and how data travels across networks."
-    },
-    {
-      icon: <Server className="w-6 h-6 text-blue-600" />,
-      title: "Client-Server Model",
-      description: "Understand how clients and servers communicate and the architecture of modern web applications."
-    },
-    {
-      icon: <Wifi className="w-6 h-6 text-blue-600" />,
-      title: "Wireless Networks",
-      description: "Explore wireless networking technologies, standards, and best practices for secure connections."
-    },
-    {
-      icon: <Globe className="w-6 h-6 text-blue-600" />,
-      title: "Internet Protocols",
-      description: "Deep dive into TCP/IP, HTTP, DNS, and other essential internet protocols."
-    },
-    {
-      icon: <Shield className="w-6 h-6 text-blue-600" />,
-      title: "Network Security",
-      description: "Learn about network security principles, common threats, and protection measures."
-    },
-    {
-      icon: <Database className="w-6 h-6 text-blue-600" />,
-      title: "Data Centers",
-      description: "Understand how data centers operate and their role in modern networking."
+  const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
+  const [topicsData, setTopicsData] = useState(topics);
+
+  const handleTopicClick = (topic: Topic) => {
+    setSelectedTopic(topic);
+  };
+
+  const handleSearchSelect = (result: SearchResult) => {
+    const topic = topicsData.find(t => t.id === result.topicId);
+    if (topic) {
+      setSelectedTopic(topic);
     }
-  ];
+  };
+
+  const handleSubtopicComplete = (topicId: string, subtopicId: string) => {
+    setTopicsData(prevTopics => {
+      return prevTopics.map(topic => {
+        if (topic.id === topicId) {
+          const updatedSubtopics = topic.subtopics.map(subtopic => 
+            subtopic.id === subtopicId 
+              ? { ...subtopic, completed: !subtopic.completed }
+              : subtopic
+          );
+          
+          const completedCount = updatedSubtopics.filter(st => st.completed).length;
+          const progress = Math.round((completedCount / updatedSubtopics.length) * 100);
+          
+          return {
+            ...topic,
+            subtopics: updatedSubtopics,
+            progress
+          };
+        }
+        return topic;
+      });
+    });
+  };
+
+  const totalProgress = Math.round(
+    topicsData.reduce((acc, topic) => acc + topic.progress, 0) / topicsData.length
+  );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
-      <div className="container mx-auto px-4 py-12">
-        <header className="text-center mb-16">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            Network Concepts Simplified
-          </h1>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Your gateway to understanding modern networking technology through clear, 
-            concise explanations and practical examples.
-          </p>
-        </header>
+    <div className="min-h-screen bg-gray-50">
+      <header className="bg-white shadow">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <GraduationCap className="h-8 w-8 text-blue-500" />
+              <h1 className="ml-3 text-2xl font-bold text-gray-900">
+                Network Learning Platform
+              </h1>
+            </div>
+            <div className="flex items-center space-x-6">
+              <SearchBar onSelect={handleSearchSelect} />
+              <div>
+                <span className="text-sm text-gray-500">Overall Progress</span>
+                <div className="flex items-center">
+                  <div className="w-32 h-2 bg-gray-200 rounded-full mr-2">
+                    <div 
+                      className="h-full bg-blue-500 rounded-full"
+                      style={{ width: `${totalProgress}%` }}
+                    />
+                  </div>
+                  <span className="text-sm font-medium">{totalProgress}%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
 
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {concepts.map((concept, index) => (
-            <ConceptCard
-              key={index}
-              icon={concept.icon}
-              title={concept.title}
-              description={concept.description}
+          {topicsData.map(topic => (
+            <TopicCard
+              key={topic.id}
+              topic={topic}
+              onClick={handleTopicClick}
             />
           ))}
         </div>
+      </main>
 
-        <footer className="mt-16 text-center text-gray-600">
-          <p>Start your networking journey today</p>
-        </footer>
-      </div>
+      {selectedTopic && (
+        <TopicModal
+          topic={selectedTopic}
+          onClose={() => setSelectedTopic(null)}
+          onSubtopicComplete={handleSubtopicComplete}
+        />
+      )}
     </div>
   );
 }
